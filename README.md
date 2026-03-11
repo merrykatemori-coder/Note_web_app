@@ -32,7 +32,23 @@ Personal workspace management web application built with Next.js, Supabase, and 
    - Project URL
    - anon/public key
 
-### 2. Local Development
+### 2. Create User Account
+
+Since there's no signup on the web, create users via Supabase:
+
+1. Go to **Authentication > Users** in Supabase Dashboard
+2. Click **Add User > Create new user**
+3. Fill in:
+   - Email: `admin@workspace.local`
+   - Password: `admin`
+   - Toggle OFF "Auto Confirm" or set **Confirm email** to checked
+4. Click **Create user**
+
+To add more accounts later, repeat step 2-4 with a different username:
+- Email format: `{username}@workspace.local`
+- Example: `john@workspace.local` → login with username `john`
+
+### 3. Local Development
 
 ```bash
 git clone <your-repo-url>
@@ -53,7 +69,7 @@ npm run dev
 
 Open http://localhost:3000
 
-### 3. Deploy to Vercel
+### 4. Deploy to Vercel
 
 1. Push code to GitHub
 2. Go to [vercel.com](https://vercel.com) and import the repository
@@ -62,7 +78,7 @@ Open http://localhost:3000
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 4. Deploy
 
-### 4. Supabase Auth URL Config
+### 5. Supabase Auth URL Config
 
 After deploying to Vercel, go to Supabase:
 - **Authentication > URL Configuration**
