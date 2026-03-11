@@ -42,9 +42,10 @@ CREATE INDEX idx_finance_type ON finance_entries(user_id, type);
 CREATE TABLE IF NOT EXISTS work_orders (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  category TEXT NOT NULL CHECK (category IN ('personal', 'company')),
+  category TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  topic TEXT DEFAULT '',
   order_detail TEXT NOT NULL,
   remark TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -63,6 +64,8 @@ CREATE TABLE IF NOT EXISTS salary_entries (
   commission DECIMAL(12,2) NOT NULL DEFAULT 0,
   brand TEXT NOT NULL,
   remark TEXT DEFAULT '',
+  period_from TEXT DEFAULT '',
+  period_to TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -208,7 +208,7 @@ export default function FinancePage() {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl border border-surface-200 bg-white text-sm outline-none focus:border-brand-500"
+          className="w-full px-3 py-2 rounded-xl border border-surface-200 bg-white text-sm outline-none focus:border-brand-500 appearance-none"
         >
           {Array.from({ length: 10 }, (_, i) => now.getFullYear() - i).map(y => (
             <option key={y} value={y}>{y + 543}</option>
@@ -309,6 +309,13 @@ export default function FinancePage() {
 
           {(activeTab === 'income' || activeTab === 'expense') && (
             <div className="px-4 space-y-3 mt-2">
+              <div className="bg-white rounded-xl p-3 border border-surface-200 flex justify-between items-center">
+                <span className="text-sm font-medium text-surface-600">รวมทั้งหมด</span>
+                <span className={`text-lg font-bold ${activeTab === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatAmount(activeTab === 'income' ? totalIncome : totalExpense)} ฿
+                </span>
+              </div>
+
               {pieData.length > 0 && (
                 <div className="bg-white rounded-xl p-4 border border-surface-200">
                   <h3 className="text-sm font-semibold mb-2">สัดส่วน{activeTab === 'income' ? 'รายรับ' : 'รายจ่าย'}</h3>
@@ -368,13 +375,6 @@ export default function FinancePage() {
                     <p className="text-center text-surface-400 text-sm py-8">ไม่มีรายการ</p>
                   )}
                 </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-3 border border-surface-200 flex justify-between items-center">
-                <span className="text-sm font-medium text-surface-600">รวมทั้งหมด</span>
-                <span className={`text-lg font-bold ${activeTab === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatAmount(activeTab === 'income' ? totalIncome : totalExpense)} ฿
-                </span>
               </div>
 
               <button

@@ -8,17 +8,15 @@ import { Plus, Loader2, Trash2, GripVertical } from 'lucide-react'
 import type { DropdownSetting } from '@/lib/types'
 
 const CATEGORIES = [
-  { key: 'memo_brand', label: 'Memo Brand' },
+  { key: 'memo_brand', label: 'Memo Tab' },
   { key: 'salary_brand', label: 'Salary Brand' },
-  { key: 'income_type', label: 'ประเภทรายรับ' },
-  { key: 'expense_type', label: 'ประเภทรายจ่าย' },
+  { key: 'work_list', label: 'Work List' },
 ]
 
 const DEFAULTS: Record<string, string[]> = {
   memo_brand: ['Office', 'Hs Cargo', 'EOS', 'Mori', 'Tolun', 'Personal'],
   salary_brand: ['HS Cargo', 'EOS', 'Mori', 'Tolun'],
-  income_type: [],
-  expense_type: [],
+  work_list: ['ส่วนตัว', 'HS Cargo', 'EOS', 'Mori', 'Tolun'],
 }
 
 export default function SettingsPage() {

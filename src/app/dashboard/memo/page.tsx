@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAuth } from '@/hooks/useAuth'
 import TabBar from '@/components/TabBar'
@@ -12,14 +12,15 @@ import type { Memo } from '@/lib/types'
 const DEFAULT_TABS = ['Office', 'Hs Cargo', 'EOS', 'Mori', 'Tolun', 'Personal']
 
 function linkifyText(text: string) {
-  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const parts = text.split(urlRegex)
   return parts.map((part, i) => {
     if (part.match(urlRegex)) {
+      const href = part.startsWith('http') ? part : `https://${part}`
       return (
         <a
           key={i}
-          href={part}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className="text-brand-600 underline inline-flex items-center gap-0.5 break-all"
@@ -39,7 +40,7 @@ export default function MemoPage() {
   const supabase = createClient()
   const [memos, setMemos] = useState<Memo[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(DEFAULT_TABS[0])
+  const [activeTab, setActiveTab] = useState('')
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [showDetail, setShowDetail] = useState<Memo | null>(null)
@@ -47,39 +48,47 @@ export default function MemoPage() {
   const [form, setForm] = useState({ topic: '', details: '' })
   const [saving, setSaving] = useState(false)
   const [tabs, setTabs] = useState<string[]>(DEFAULT_TABS)
+  const [tabsLoaded, setTabsLoaded] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    loadTabs()
-    loadMemos()
+    loadData()
   }, [user])
 
-  const loadTabs = async () => {
-    const { data } = await supabase
-      .from('dropdown_settings')
-      .select('value')
-      .eq('user_id', user!.id)
-      .eq('category', 'memo_brand')
-      .order('sort_order')
-
-    if (data && data.length > 0) {
-      setTabs(data.map(d => d.value))
-      setActiveTab(data[0].value)
-    }
-  }
-
-  const loadMemos = async () => {
+  const loadData = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('memos')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('pinned', { ascending: false })
-      .order('created_at', { ascending: false })
+    const [tabRes, memoRes] = await Promise.all([
+      supabase
+        .from('dropdown_settings')
+        .select('value')
+        .eq('user_id', user!.id)
+        .eq('category', 'memo_brand')
+        .order('sort_order'),
+      supabase
+        .from('memos')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('pinned', { ascending: false })
+        .order('created_at', { ascending: false }),
+    ])
 
-    if (data) setMemos(data)
+    if (tabRes.data && tabRes.data.length > 0) {
+      const uniqueTabs = [...new Set(tabRes.data.map(d => d.value))]
+      setTabs(uniqueTabs)
+      if (!activeTab) setActiveTab(uniqueTabs[0])
+    } else {
+      setTabs(DEFAULT_TABS)
+      if (!activeTab) setActiveTab(DEFAULT_TABS[0])
+    }
+    setTabsLoaded(true)
+
+    if (memoRes.data) setMemos(memoRes.data)
     setLoading(false)
   }
+
+  const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key)
+  }, [])
 
   const filteredMemos = useMemo(() => {
     let result = memos.filter(m => m.tab === activeTab)
@@ -163,14 +172,14 @@ export default function MemoPage() {
     setShowDetail(null)
   }
 
-  if (!user) return null
+  if (!user || !tabsLoaded) return null
 
   return (
     <div className="animate-fade-in">
       <TabBar
         tabs={tabs.map(t => ({ key: t, label: t }))}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
       />
 
       <SearchBar value={search} onChange={setSearch} placeholder="ค้นหา topic, details..." />

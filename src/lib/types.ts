@@ -24,9 +24,10 @@ export interface FinanceEntry {
 export interface WorkOrder {
   id: string
   user_id: string
-  category: 'personal' | 'company'
+  category: string
   status: 'todo' | 'doing' | 'done'
   date: string
+  topic: string
   order_detail: string
   remark: string
   created_at: string
@@ -41,6 +42,8 @@ export interface SalaryEntry {
   commission: number
   brand: string
   remark: string
+  period_from: string
+  period_to: string
   created_at: string
 }
 

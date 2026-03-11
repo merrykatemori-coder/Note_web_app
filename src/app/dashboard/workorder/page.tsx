@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAuth } from '@/hooks/useAuth'
 import TabBar from '@/components/TabBar'
 import Modal from '@/components/Modal'
 import { Plus, Loader2, Trash2, ChevronLeft, Edit3, CheckCircle2, Clock, CircleDot } from 'lucide-react'
 import type { WorkOrder } from '@/lib/types'
+
+const DEFAULT_CATEGORIES = ['ส่วนตัว', 'HS Cargo', 'EOS', 'Mori', 'Tolun']
 
 const STATUS_CONFIG = {
   todo: { label: 'Todo', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: Clock },
@@ -19,34 +21,60 @@ export default function WorkOrderPage() {
   const supabase = createClient()
   const [orders, setOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
-  const [category, setCategory] = useState<'personal' | 'company'>('personal')
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const [category, setCategory] = useState('')
   const [statusTab, setStatusTab] = useState<'todo' | 'doing' | 'done'>('todo')
   const [showAdd, setShowAdd] = useState(false)
   const [showDetail, setShowDetail] = useState<WorkOrder | null>(null)
   const [editingOrder, setEditingOrder] = useState<WorkOrder | null>(null)
   const [saving, setSaving] = useState(false)
+  const [ready, setReady] = useState(false)
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
+    topic: '',
     order_detail: '',
     status: 'todo' as 'todo' | 'doing' | 'done',
     remark: '',
   })
 
   useEffect(() => {
-    if (user) loadOrders()
+    if (user) loadData()
   }, [user])
 
-  const loadOrders = async () => {
+  const loadData = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('work_orders')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false })
-    if (data) setOrders(data)
+    const [catRes, orderRes] = await Promise.all([
+      supabase
+        .from('dropdown_settings')
+        .select('value')
+        .eq('user_id', user!.id)
+        .eq('category', 'work_list')
+        .order('sort_order'),
+      supabase
+        .from('work_orders')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false }),
+    ])
+
+    if (catRes.data && catRes.data.length > 0) {
+      const cats = [...new Set(catRes.data.map(d => d.value))]
+      setCategories(cats)
+      if (!category) setCategory(cats[0])
+    } else {
+      setCategories(DEFAULT_CATEGORIES)
+      if (!category) setCategory(DEFAULT_CATEGORIES[0])
+    }
+
+    if (orderRes.data) setOrders(orderRes.data)
+    setReady(true)
     setLoading(false)
   }
+
+  const handleCategoryChange = useCallback((k: string) => {
+    setCategory(k)
+  }, [])
 
   const filteredOrders = useMemo(() => {
     return orders.filter(o => o.category === category && o.status === statusTab)
@@ -70,6 +98,7 @@ export default function WorkOrderPage() {
         .from('work_orders')
         .update({
           date: form.date,
+          topic: form.topic,
           order_detail: form.order_detail,
           status: form.status,
           remark: form.remark,
@@ -89,6 +118,7 @@ export default function WorkOrderPage() {
           user_id: user.id,
           category,
           date: form.date,
+          topic: form.topic,
           order_detail: form.order_detail,
           status: form.status,
           remark: form.remark,
@@ -99,7 +129,7 @@ export default function WorkOrderPage() {
       if (data) setOrders(prev => [data, ...prev])
     }
 
-    setForm({ date: new Date().toISOString().split('T')[0], order_detail: '', status: 'todo', remark: '' })
+    setForm({ date: new Date().toISOString().split('T')[0], topic: '', order_detail: '', status: 'todo', remark: '' })
     setShowAdd(false)
     setSaving(false)
   }
@@ -119,25 +149,22 @@ export default function WorkOrderPage() {
 
   const openEdit = (order: WorkOrder) => {
     setEditingOrder(order)
-    setForm({ date: order.date, order_detail: order.order_detail, status: order.status, remark: order.remark })
+    setForm({ date: order.date, topic: (order as any).topic || '', order_detail: order.order_detail, status: order.status, remark: order.remark })
     setShowAdd(true)
     setShowDetail(null)
   }
 
-  if (!user) return null
+  if (!user || !ready) return null
 
   return (
     <div className="animate-fade-in">
       <TabBar
-        tabs={[
-          { key: 'personal', label: 'ส่วนตัว' },
-          { key: 'company', label: 'บริษัท' },
-        ]}
+        tabs={categories.map(c => ({ key: c, label: c }))}
         activeTab={category}
-        onChange={(k) => setCategory(k as 'personal' | 'company')}
+        onChange={handleCategoryChange}
       />
 
-      <div className="flex gap-1 px-4 pb-3">
+      <div className="flex gap-1 px-4 pb-3 justify-center">
         {(['todo', 'doing', 'done'] as const).map(s => {
           const config = STATUS_CONFIG[s]
           const Icon = config.icon
@@ -145,7 +172,7 @@ export default function WorkOrderPage() {
             <button
               key={s}
               onClick={() => setStatusTab(s)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
+              className={`flex-1 max-w-[140px] py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
                 statusTab === s ? config.color + ' border-current' : 'bg-white border-surface-200 text-surface-500'
               }`}
             >
@@ -173,6 +200,7 @@ export default function WorkOrderPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
+                  {(order as any).topic && <p className="text-[10px] text-brand-600 font-medium mb-0.5">{(order as any).topic}</p>}
                   <h3 className="font-semibold text-sm truncate">{order.order_detail}</h3>
                   {order.remark && <p className="text-xs text-surface-500 mt-1 line-clamp-1">{order.remark}</p>}
                 </div>
@@ -184,7 +212,7 @@ export default function WorkOrderPage() {
       </div>
 
       <button
-        onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], order_detail: '', status: statusTab, remark: '' }); setEditingOrder(null); setShowAdd(true) }}
+        onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], topic: '', order_detail: '', status: statusTab, remark: '' }); setEditingOrder(null); setShowAdd(true) }}
         className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 flex items-center justify-center active:scale-90 transition-transform z-30"
       >
         <Plus size={24} />
@@ -203,6 +231,16 @@ export default function WorkOrderPage() {
               value={form.date}
               onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))}
               className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">Topic</label>
+            <input
+              type="text"
+              value={form.topic}
+              onChange={(e) => setForm(prev => ({ ...prev, topic: e.target.value }))}
+              className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm"
+              placeholder="หัวข้อ"
             />
           </div>
           <div>
@@ -275,6 +313,12 @@ export default function WorkOrderPage() {
                 <span className="text-xs text-surface-400">วันที่</span>
                 <p className="text-sm font-medium mt-0.5">{showDetail.date}</p>
               </div>
+              {(showDetail as any).topic && (
+                <div>
+                  <span className="text-xs text-surface-400">Topic</span>
+                  <p className="text-sm font-medium mt-0.5">{(showDetail as any).topic}</p>
+                </div>
+              )}
               <div>
                 <span className="text-xs text-surface-400">คำสั่งงาน</span>
                 <p className="text-sm mt-0.5 whitespace-pre-wrap">{showDetail.order_detail}</p>
