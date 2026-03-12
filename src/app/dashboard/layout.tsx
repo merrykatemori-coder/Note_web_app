@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import {
   StickyNote,
@@ -70,9 +71,10 @@ export default function DashboardLayout({
             const isActive = pathname.startsWith(item.href)
             const Icon = item.icon
             return (
-              <button
+              <Link
                 key={item.href}
-                onClick={() => router.push(item.href)}
+                href={item.href}
+                prefetch={true}
                 className={`flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all ${
                   isActive
                     ? 'text-brand-600'
@@ -83,7 +85,7 @@ export default function DashboardLayout({
                 <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
                   {item.label}
                 </span>
-              </button>
+              </Link>
             )
           })}
         </div>
