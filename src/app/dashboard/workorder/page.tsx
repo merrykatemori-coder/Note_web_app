@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAuth } from '@/hooks/useAuth'
 import TabBar from '@/components/TabBar'
+import SearchBar from '@/components/SearchBar'
 import Modal from '@/components/Modal'
 import { Plus, Loader2, Trash2, ChevronLeft, Edit3, CheckCircle2, Clock, CircleDot } from 'lucide-react'
 import type { WorkOrder } from '@/lib/types'
@@ -28,6 +29,7 @@ export default function WorkOrderPage() {
   const [showDetail, setShowDetail] = useState<WorkOrder | null>(null)
   const [editingOrder, setEditingOrder] = useState<WorkOrder | null>(null)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
   const [ready, setReady] = useState(false)
 
   const [form, setForm] = useState({
@@ -77,8 +79,17 @@ export default function WorkOrderPage() {
   }, [])
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(o => o.category === category && o.status === statusTab)
-  }, [orders, category, statusTab])
+    let result = orders.filter(o => o.category === category && o.status === statusTab)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(o =>
+        (o.topic || '').toLowerCase().includes(q) ||
+        o.order_detail.toLowerCase().includes(q) ||
+        o.remark.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [orders, category, statusTab, search])
 
   const countByStatus = useMemo(() => {
     const catOrders = orders.filter(o => o.category === category)
@@ -182,6 +193,10 @@ export default function WorkOrderPage() {
             </button>
           )
         })}
+      </div>
+
+      <div className="mb-3">
+        <SearchBar value={search} onChange={setSearch} placeholder="ค้นหา topic, คำสั่งงาน..." />
       </div>
 
       <div className="px-4 space-y-3">

@@ -247,7 +247,7 @@ export default function MemoPage() {
               onChange={(e) => setForm(prev => ({ ...prev, details: e.target.value }))}
               rows={6}
               className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm resize-none"
-              placeholder="รายละเอียด (รองรับ URL)"
+              placeholder="รายละเอียด"
             />
           </div>
           <button

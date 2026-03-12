@@ -7,7 +7,7 @@ import TabBar from '@/components/TabBar'
 import Modal from '@/components/Modal'
 import {
   Plus, Loader2, Trash2, TrendingUp, TrendingDown,
-  ArrowUpCircle, ArrowDownCircle, RotateCcw,
+  ArrowUpCircle, ArrowDownCircle, RotateCcw, Edit3,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -30,6 +30,9 @@ export default function FinancePage() {
   const [showAdd, setShowAdd] = useState(false)
   const [addType, setAddType] = useState<'income' | 'expense'>('expense')
   const [saving, setSaving] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState<FinanceEntry | null>(null)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', amount: '', payment_method: 'cash', remark: '', date: '' })
 
   const now = new Date()
   const [filterMode, setFilterMode] = useState<FilterMode>('custom')
@@ -139,6 +142,45 @@ export default function FinancePage() {
 
     setForm({ name: '', amount: '', payment_method: 'cash', remark: '', date: format(now, 'yyyy-MM-dd') })
     setShowAdd(false)
+    setSaving(false)
+  }
+
+  const openDetail = (entry: FinanceEntry) => {
+    setSelectedEntry(entry)
+  }
+
+  const openEditEntry = (entry: FinanceEntry) => {
+    setEditForm({
+      name: entry.name,
+      amount: String(entry.amount),
+      payment_method: entry.payment_method,
+      remark: entry.remark,
+      date: entry.date,
+    })
+    setSelectedEntry(entry)
+    setShowEdit(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!selectedEntry || !editForm.name.trim() || !editForm.amount) return
+    setSaving(true)
+
+    const { error } = await supabase
+      .from('finance_entries')
+      .update({
+        name: editForm.name,
+        amount: parseFloat(editForm.amount),
+        payment_method: editForm.payment_method,
+        remark: editForm.remark,
+        date: editForm.date,
+      })
+      .eq('id', selectedEntry.id)
+
+    if (!error) {
+      setEntries(prev => prev.map(e => e.id === selectedEntry.id ? { ...e, name: editForm.name, amount: parseFloat(editForm.amount), payment_method: editForm.payment_method, remark: editForm.remark, date: editForm.date } : e))
+    }
+    setShowEdit(false)
+    setSelectedEntry(null)
     setSaving(false)
   }
 
@@ -341,32 +383,16 @@ export default function FinancePage() {
                         <th className="text-left p-3 font-medium text-surface-600">วันที่</th>
                         <th className="text-left p-3 font-medium text-surface-600">รายการ</th>
                         <th className="text-right p-3 font-medium text-surface-600">จำนวน</th>
-                        <th className="text-center p-3 font-medium text-surface-600">ประเภท</th>
-                        <th className="p-3"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {(activeTab === 'income' ? incomeEntries : expenseEntries).map(e => (
-                        <tr key={e.id} className="border-b border-surface-100 last:border-0">
+                        <tr key={e.id} onClick={() => openDetail(e)} className="border-b border-surface-100 last:border-0 cursor-pointer active:bg-surface-50 transition-colors">
                           <td className="p-3 text-xs text-surface-500 whitespace-nowrap">{e.date}</td>
                           <td className="p-3">
                             <p className="font-medium text-xs">{e.name}</p>
-                            {e.remark && <p className="text-[10px] text-surface-400 mt-0.5">{e.remark}</p>}
                           </td>
                           <td className="p-3 text-right font-semibold text-xs">{formatAmount(e.amount)}</td>
-                          <td className="p-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-100 text-surface-600">
-                              {activeTab === 'expense'
-                                ? (e.payment_method === 'cash' ? 'เงินสด' : 'เงินโอน')
-                                : (e.payment_method === 'personal' ? 'ส่วนตัว' : 'บริษัท')
-                              }
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <button onClick={() => deleteEntry(e.id)} className="text-red-400 hover:text-red-600 p-1">
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -470,6 +496,79 @@ export default function FinancePage() {
           >
             {saving && <Loader2 size={18} className="animate-spin" />}
             บันทึก
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!selectedEntry} onClose={() => setSelectedEntry(null)} title="รายละเอียด">
+        {selectedEntry && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-surface-400">วันที่</span>
+              <span className="text-sm font-medium">{selectedEntry.date}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-surface-400">รายการ</span>
+              <span className="text-sm font-medium">{selectedEntry.name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-surface-400">จำนวนเงิน</span>
+              <span className={`text-sm font-bold ${selectedEntry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(selectedEntry.amount)} ฿</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-surface-400">ประเภท</span>
+              <span className="text-sm">
+                {selectedEntry.type === 'expense'
+                  ? (selectedEntry.payment_method === 'cash' ? 'เงินสด' : 'เงินโอน')
+                  : (selectedEntry.payment_method === 'personal' ? 'ส่วนตัว' : 'บริษัท')
+                }
+              </span>
+            </div>
+            {selectedEntry.remark && (
+              <div>
+                <span className="text-xs text-surface-400">Remark</span>
+                <p className="text-sm mt-0.5">{selectedEntry.remark}</p>
+              </div>
+            )}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => openEditEntry(selectedEntry)}
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-brand-700 active:scale-[0.98] transition-all"
+              >
+                <Edit3 size={14} /> แก้ไข
+              </button>
+              <button
+                onClick={() => { deleteEntry(selectedEntry.id); setSelectedEntry(null) }}
+                className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-red-100 active:scale-[0.98] transition-all"
+              >
+                <Trash2 size={14} /> ลบ
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="แก้ไขรายการ">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">วันที่</label>
+            <input type="date" value={editForm.date} onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">ชื่อรายการ</label>
+            <input type="text" value={editForm.name} onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">จำนวนเงิน</label>
+            <input type="number" value={editForm.amount} onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm" step="0.01" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">Remark</label>
+            <textarea value={editForm.remark} onChange={(e) => setEditForm(prev => ({ ...prev, remark: e.target.value }))} rows={2} className="w-full px-4 py-3 rounded-xl border border-surface-200 bg-surface-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none text-sm resize-none" />
+          </div>
+          <button onClick={handleUpdate} disabled={saving} className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving && <Loader2 size={18} className="animate-spin" />}
+            บันทึกการแก้ไข
           </button>
         </div>
       </Modal>

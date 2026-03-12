@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAuth } from '@/hooks/useAuth'
 import TabBar from '@/components/TabBar'
@@ -27,6 +27,10 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [newValue, setNewValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+  const dragY = useRef(0)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (user) loadItems()
@@ -92,22 +96,84 @@ export default function SettingsPage() {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const moveItem = async (index: number, direction: 'up' | 'down') => {
+  const getIndexFromY = (clientY: number): number => {
+    if (!listRef.current) return 0
+    const children = Array.from(listRef.current.children) as HTMLElement[]
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect()
+      if (clientY < rect.top + rect.height / 2) return i
+    }
+    return children.length - 1
+  }
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+    setOverIndex(index)
+  }
+
+  const handleDragMove = (clientY: number) => {
+    if (dragIndex === null) return
+    const newOver = getIndexFromY(clientY)
+    if (newOver !== overIndex) setOverIndex(newOver)
+  }
+
+  const handleDragEnd = async () => {
+    if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
+      setDragIndex(null)
+      setOverIndex(null)
+      return
+    }
+
     const newItems = [...items]
-    const swapIndex = direction === 'up' ? index - 1 : index + 1
-    if (swapIndex < 0 || swapIndex >= newItems.length) return
+    const [moved] = newItems.splice(dragIndex, 1)
+    newItems.splice(overIndex, 0, moved)
 
-    const temp = newItems[index].sort_order
-    newItems[index].sort_order = newItems[swapIndex].sort_order
-    newItems[swapIndex].sort_order = temp;
-    [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]]
+    const updated = newItems.map((item, i) => ({ ...item, sort_order: i }))
+    setItems(updated)
+    setDragIndex(null)
+    setOverIndex(null)
 
-    setItems(newItems)
+    await Promise.all(
+      updated.map(item =>
+        supabase.from('dropdown_settings').update({ sort_order: item.sort_order }).eq('id', item.id)
+      )
+    )
+  }
 
-    await Promise.all([
-      supabase.from('dropdown_settings').update({ sort_order: newItems[index].sort_order }).eq('id', newItems[index].id),
-      supabase.from('dropdown_settings').update({ sort_order: newItems[swapIndex].sort_order }).eq('id', newItems[swapIndex].id),
-    ])
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    dragY.current = e.touches[0].clientY
+    handleDragStart(index)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault()
+    handleDragMove(e.touches[0].clientY)
+  }
+
+  const handleTouchEnd = () => {
+    handleDragEnd()
+  }
+
+  const handleMouseDown = (e: React.MouseEvent, index: number) => {
+    e.preventDefault()
+    handleDragStart(index)
+
+    const onMove = (ev: MouseEvent) => handleDragMove(ev.clientY)
+    const onUp = () => {
+      handleDragEnd()
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const getDisplayItems = () => {
+    if (dragIndex === null || overIndex === null) return items
+    const display = [...items]
+    const [moved] = display.splice(dragIndex, 1)
+    display.splice(overIndex, 0, moved)
+    return display
   }
 
   if (!user) return null
@@ -152,38 +218,37 @@ export default function SettingsPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-12 text-surface-400 text-sm">ยังไม่มีรายการ</div>
         ) : (
-          <div className="space-y-2">
-            {items.map((item, index) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-xl p-3 border border-surface-200 flex items-center gap-3"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    onClick={() => moveItem(index, 'up')}
-                    disabled={index === 0}
-                    className="text-surface-400 hover:text-surface-600 disabled:opacity-30 text-xs"
+          <div ref={listRef} className="space-y-2">
+            {getDisplayItems().map((item, index) => {
+              const isDragging = dragIndex !== null && item.id === items[dragIndex]?.id
+              return (
+                <div
+                  key={item.id}
+                  className={`bg-white rounded-xl p-3 border flex items-center gap-3 transition-all ${
+                    isDragging
+                      ? 'border-brand-400 shadow-lg shadow-brand-500/10 scale-[1.02] opacity-90'
+                      : 'border-surface-200'
+                  }`}
+                >
+                  <div
+                    className="touch-none cursor-grab active:cursor-grabbing p-1 text-surface-300 hover:text-surface-500"
+                    onMouseDown={(e) => handleMouseDown(e, items.indexOf(item))}
+                    onTouchStart={(e) => handleTouchStart(e, items.indexOf(item))}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                   >
-                    ▲
-                  </button>
+                    <GripVertical size={18} />
+                  </div>
+                  <span className="text-sm font-medium flex-1">{item.value}</span>
                   <button
-                    onClick={() => moveItem(index, 'down')}
-                    disabled={index === items.length - 1}
-                    className="text-surface-400 hover:text-surface-600 disabled:opacity-30 text-xs"
+                    onClick={() => deleteItem(item.id)}
+                    className="text-red-400 hover:text-red-600 p-1.5 flex-shrink-0"
                   >
-                    ▼
+                    <Trash2 size={16} />
                   </button>
                 </div>
-                <GripVertical size={16} className="text-surface-300 flex-shrink-0" />
-                <span className="text-sm font-medium flex-1">{item.value}</span>
-                <button
-                  onClick={() => deleteItem(item.id)}
-                  className="text-red-400 hover:text-red-600 p-1.5 flex-shrink-0"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
