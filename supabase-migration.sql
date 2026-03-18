@@ -84,6 +84,24 @@ CREATE TABLE IF NOT EXISTS dropdown_settings (
 CREATE INDEX idx_dropdown_user_id ON dropdown_settings(user_id);
 CREATE INDEX idx_dropdown_category ON dropdown_settings(user_id, category);
 
+-- Contacts table
+CREATE TABLE IF NOT EXISTS contacts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  line_id TEXT DEFAULT '',
+  email TEXT DEFAULT '',
+  contact_type TEXT NOT NULL DEFAULT 'Customer',
+  position TEXT DEFAULT '',
+  company TEXT DEFAULT '',
+  remark TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_contacts_user_id ON contacts(user_id);
+CREATE INDEX idx_contacts_name ON contacts(user_id, name);
+
 -- ============================
 -- Row Level Security (RLS)
 -- ============================
@@ -93,6 +111,7 @@ ALTER TABLE finance_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE salary_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dropdown_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 
 -- Memos policies
 CREATE POLICY "Users can view own memos" ON memos FOR SELECT USING (auth.uid() = user_id);
@@ -123,3 +142,9 @@ CREATE POLICY "Users can view own dropdown" ON dropdown_settings FOR SELECT USIN
 CREATE POLICY "Users can insert own dropdown" ON dropdown_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own dropdown" ON dropdown_settings FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own dropdown" ON dropdown_settings FOR DELETE USING (auth.uid() = user_id);
+
+-- Contacts policies
+CREATE POLICY "Users can view own contacts" ON contacts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own contacts" ON contacts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own contacts" ON contacts FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own contacts" ON contacts FOR DELETE USING (auth.uid() = user_id);

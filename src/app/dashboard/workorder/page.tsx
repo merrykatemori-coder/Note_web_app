@@ -137,7 +137,22 @@ export default function WorkOrderPage() {
         .select()
         .single()
 
-      if (data) setOrders(prev => [data, ...prev])
+      if (data) {
+        setOrders(prev => [data, ...prev])
+        if (form.status === 'todo') {
+          fetch('/api/line-notify-single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              topic: form.topic,
+              order_detail: form.order_detail,
+              remark: form.remark,
+              date: form.date,
+            }),
+          }).catch(() => {})
+        }
+      }
     }
 
     setForm({ date: new Date().toISOString().split('T')[0], topic: '', order_detail: '', status: 'todo', remark: '' })

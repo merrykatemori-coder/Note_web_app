@@ -11,12 +11,14 @@ const CATEGORIES = [
   { key: 'memo_brand', label: 'Memo Tab' },
   { key: 'salary_brand', label: 'Salary Brand' },
   { key: 'work_list', label: 'Work List' },
+  { key: 'contact_type', label: 'Contact Type' },
 ]
 
 const DEFAULTS: Record<string, string[]> = {
   memo_brand: ['Office', 'Hs Cargo', 'EOS', 'Mori', 'Tolun', 'Personal'],
   salary_brand: ['HS Cargo', 'EOS', 'Mori', 'Tolun'],
   work_list: ['ส่วนตัว', 'HS Cargo', 'EOS', 'Mori', 'Tolun'],
+  contact_type: ['Customer', 'Officer', 'Organization', 'Partner', 'Other'],
 }
 
 export default function SettingsPage() {
