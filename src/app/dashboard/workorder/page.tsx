@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import TabBar from '@/components/TabBar'
 import SearchBar from '@/components/SearchBar'
 import Modal from '@/components/Modal'
@@ -18,7 +18,7 @@ const STATUS_CONFIG = {
 }
 
 export default function WorkOrderPage() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useRole()
   const supabase = createClient()
   const [orders, setOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,13 +50,11 @@ export default function WorkOrderPage() {
       supabase
         .from('dropdown_settings')
         .select('value')
-        .eq('user_id', user!.id)
         .eq('category', 'work_list')
         .order('sort_order'),
       supabase
         .from('work_orders')
         .select('*')
-        .eq('user_id', user!.id)
         .order('created_at', { ascending: false }),
     ])
 
@@ -160,7 +158,15 @@ export default function WorkOrderPage() {
     setSaving(false)
   }
 
+  const statusOrder = { todo: 0, doing: 1, done: 2 }
+
+  const canChangeStatus = (currentStatus: string, newStatus: 'todo' | 'doing' | 'done') => {
+    if (isAdmin) return true
+    return statusOrder[newStatus as keyof typeof statusOrder] > statusOrder[currentStatus as keyof typeof statusOrder]
+  }
+
   const changeStatus = async (order: WorkOrder, newStatus: 'todo' | 'doing' | 'done') => {
+    if (!canChangeStatus(order.status, newStatus)) return
     await supabase.from('work_orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', order.id)
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o))
     setShowDetail(prev => prev?.id === order.id ? { ...prev, status: newStatus } : prev)
@@ -241,12 +247,14 @@ export default function WorkOrderPage() {
         )}
       </div>
 
-      <button
-        onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], topic: '', order_detail: '', status: statusTab, remark: '' }); setEditingOrder(null); setShowAdd(true) }}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 flex items-center justify-center active:scale-90 transition-transform z-30"
-      >
-        <Plus size={24} />
-      </button>
+      {isAdmin && (
+        <button
+          onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], topic: '', order_detail: '', status: statusTab, remark: '' }); setEditingOrder(null); setShowAdd(true) }}
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 flex items-center justify-center active:scale-90 transition-transform z-30"
+        >
+          <Plus size={24} />
+        </button>
+      )}
 
       <Modal
         isOpen={showAdd}
@@ -331,12 +339,16 @@ export default function WorkOrderPage() {
                 <ChevronLeft size={22} />
               </button>
               <h2 className="text-lg font-semibold flex-1 truncate">รายละเอียด</h2>
-              <button onClick={() => openEdit(showDetail)} className="p-2 rounded-lg text-surface-400 hover:bg-surface-100">
-                <Edit3 size={18} />
-              </button>
-              <button onClick={() => deleteOrder(showDetail.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-50">
-                <Trash2 size={18} />
-              </button>
+              {isAdmin && (
+                <>
+                  <button onClick={() => openEdit(showDetail)} className="p-2 rounded-lg text-surface-400 hover:bg-surface-100">
+                    <Edit3 size={18} />
+                  </button>
+                  <button onClick={() => deleteOrder(showDetail.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-50">
+                    <Trash2 size={18} />
+                  </button>
+                </>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
@@ -365,14 +377,18 @@ export default function WorkOrderPage() {
                   {(['todo', 'doing', 'done'] as const).map(s => {
                     const config = STATUS_CONFIG[s]
                     const Icon = config.icon
+                    const disabled = !canChangeStatus(showDetail.status, s) && showDetail.status !== s
                     return (
                       <button
                         key={s}
                         onClick={() => changeStatus(showDetail, s)}
+                        disabled={disabled}
                         className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all border flex items-center justify-center gap-1.5 ${
                           showDetail.status === s
                             ? config.color + ' border-current'
-                            : 'bg-white border-surface-200 text-surface-500 hover:bg-surface-50'
+                            : disabled
+                              ? 'bg-surface-50 border-surface-100 text-surface-300 cursor-not-allowed'
+                              : 'bg-white border-surface-200 text-surface-500 hover:bg-surface-50'
                         }`}
                       >
                         <Icon size={16} />

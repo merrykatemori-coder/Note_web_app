@@ -58,7 +58,6 @@ export default function FinancePage() {
     const { data } = await supabase
       .from('finance_entries')
       .select('*')
-      .eq('user_id', user!.id)
       .order('date', { ascending: false })
     if (data) setEntries(data)
     setLoading(false)

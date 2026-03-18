@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
+import { useRole } from '@/hooks/useRole'
 import {
   StickyNote,
   Wallet,
@@ -15,12 +16,12 @@ import {
 import { useState } from 'react'
 
 const navItems = [
-  { href: '/dashboard/memo', label: 'Memo', icon: StickyNote },
-  { href: '/dashboard/finance', label: 'Finance', icon: Wallet },
-  { href: '/dashboard/workorder', label: 'Work', icon: ClipboardList },
-  { href: '/dashboard/contacts', label: 'Contacts', icon: BookUser },
-  { href: '/dashboard/salary', label: 'Salary', icon: BadgeDollarSign },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/memo', label: 'Memo', icon: StickyNote, adminOnly: false },
+  { href: '/dashboard/finance', label: 'Finance', icon: Wallet, adminOnly: false },
+  { href: '/dashboard/workorder', label: 'Work', icon: ClipboardList, adminOnly: false },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: BookUser, adminOnly: false },
+  { href: '/dashboard/salary', label: 'Salary', icon: BadgeDollarSign, adminOnly: false },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
 export default function DashboardLayout({
@@ -31,6 +32,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { isAdmin } = useRole()
   const [showLogout, setShowLogout] = useState(false)
 
   const handleLogout = async () => {
@@ -38,6 +40,8 @@ export default function DashboardLayout({
     router.push('/login')
     router.refresh()
   }
+
+  const visibleNav = navItems.filter(item => !item.adminOnly || isAdmin)
 
   return (
     <div className="min-h-screen pb-20 bg-[var(--bg-primary)]">
@@ -69,7 +73,7 @@ export default function DashboardLayout({
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-lg border-t border-surface-200 safe-area-bottom">
         <div className="max-w-lg mx-auto flex items-center justify-around px-1 py-1">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const isActive = pathname.startsWith(item.href)
             const Icon = item.icon
             return (

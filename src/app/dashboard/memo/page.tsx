@@ -61,13 +61,11 @@ export default function MemoPage() {
       supabase
         .from('dropdown_settings')
         .select('value')
-        .eq('user_id', user!.id)
         .eq('category', 'memo_brand')
         .order('sort_order'),
       supabase
         .from('memos')
         .select('*')
-        .eq('user_id', user!.id)
         .order('pinned', { ascending: false })
         .order('created_at', { ascending: false }),
     ])

@@ -47,8 +47,8 @@ export default function ContactsPage() {
   const loadData = async () => {
     setLoading(true)
     const [contactRes, typeRes] = await Promise.all([
-      supabase.from('contacts').select('*').eq('user_id', user!.id).order('name'),
-      supabase.from('dropdown_settings').select('value').eq('user_id', user!.id).eq('category', 'contact_type').order('sort_order'),
+      supabase.from('contacts').select('*').order('name'),
+      supabase.from('dropdown_settings').select('value').eq('category', 'contact_type').order('sort_order'),
     ])
     if (contactRes.data) setContacts(contactRes.data)
     if (typeRes.data && typeRes.data.length > 0) {

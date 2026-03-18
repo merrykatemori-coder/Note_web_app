@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import Modal from '@/components/Modal'
 import { Plus, Loader2, Trash2, PlusCircle, X } from 'lucide-react'
 import { format } from 'date-fns'
@@ -17,7 +17,7 @@ interface SalaryRow {
 }
 
 export default function SalaryPage() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useRole()
   const supabase = createClient()
   const [entries, setEntries] = useState<SalaryEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,7 +45,6 @@ export default function SalaryPage() {
     const { data } = await supabase
       .from('dropdown_settings')
       .select('value')
-      .eq('user_id', user!.id)
       .eq('category', 'salary_brand')
       .order('sort_order')
 
@@ -61,7 +60,6 @@ export default function SalaryPage() {
     const { data } = await supabase
       .from('salary_entries')
       .select('*')
-      .eq('user_id', user!.id)
       .order('date', { ascending: false })
     if (data) setEntries(data)
     setLoading(false)
@@ -164,21 +162,25 @@ export default function SalaryPage() {
                   </div>
                   {entry.remark && <p className="text-xs text-surface-500 mt-2">{entry.remark}</p>}
                 </div>
-                <button onClick={() => deleteEntry(entry.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0">
-                  <Trash2 size={16} />
-                </button>
+                {isAdmin && (
+                  <button onClick={() => deleteEntry(entry.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
 
-      <button
-        onClick={() => setShowAdd(true)}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 flex items-center justify-center active:scale-90 transition-transform z-30"
-      >
-        <Plus size={24} />
-      </button>
+      {isAdmin && (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 flex items-center justify-center active:scale-90 transition-transform z-30"
+        >
+          <Plus size={24} />
+        </button>
+      )}
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="เพิ่มรายการ Salary / Commission">
         <div className="space-y-4">

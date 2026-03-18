@@ -43,7 +43,6 @@ export default function SettingsPage() {
     const { data } = await supabase
       .from('dropdown_settings')
       .select('*')
-      .eq('user_id', user!.id)
       .eq('category', activeCategory)
       .order('sort_order')
 
