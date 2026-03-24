@@ -1,0 +1,29 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 0 */6 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          # Insert a keep-alive row
+          curl -s -X POST "${SUPABASE_URL}/rest/v1/notes" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"topic":"keep-alive","type":"system","description":"auto ping"}'
+
+          # Delete it
+          curl -s -X DELETE "${SUPABASE_URL}/rest/v1/notes?topic=eq.keep-alive" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}"
+
+          echo "Supabase pinged successfully"
