@@ -140,7 +140,7 @@ export default function WorkOrderPage() {
 
       if (data) {
         setOrders(prev => [data, ...prev])
-        if (form.status === 'todo') {
+        if (form.status === 'todo' && orgId === 'org_main') {
           fetch('/api/line-notify-single', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
