@@ -18,7 +18,7 @@ const STATUS_CONFIG = {
 }
 
 export default function WorkOrderPage() {
-  const { user, isAdmin } = useRole()
+  const { user, isAdmin, orgId } = useRole()
   const supabase = createClient()
   const [orders, setOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,8 +41,8 @@ export default function WorkOrderPage() {
   })
 
   useEffect(() => {
-    if (user) loadData()
-  }, [user])
+    if (user && orgId) loadData()
+  }, [user, orgId])
 
   const loadData = async () => {
     setLoading(true)
@@ -50,11 +50,13 @@ export default function WorkOrderPage() {
       supabase
         .from('dropdown_settings')
         .select('value')
+        .eq('org_id', orgId)
         .eq('category', 'work_list')
         .order('sort_order'),
       supabase
         .from('work_orders')
         .select('*')
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false }),
     ])
 
@@ -125,6 +127,7 @@ export default function WorkOrderPage() {
         .from('work_orders')
         .insert({
           user_id: user.id,
+          org_id: orgId,
           category,
           date: form.date,
           topic: form.topic,

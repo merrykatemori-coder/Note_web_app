@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import TabBar from '@/components/TabBar'
 import Modal from '@/components/Modal'
 import {
@@ -22,7 +22,7 @@ const COLORS = ['#4c6ef5', '#fa5252', '#40c057', '#fab005', '#7950f2', '#15aabf'
 type FilterMode = 'custom' | 'month' | 'year'
 
 export default function FinancePage() {
-  const { user } = useAuth()
+  const { user, orgId } = useRole()
   const supabase = createClient()
   const [entries, setEntries] = useState<FinanceEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,14 +50,15 @@ export default function FinancePage() {
   })
 
   useEffect(() => {
-    if (user) loadEntries()
-  }, [user])
+    if (user && orgId) loadEntries()
+  }, [user, orgId])
 
   const loadEntries = async () => {
     setLoading(true)
     const { data } = await supabase
       .from('finance_entries')
       .select('*')
+      .eq('org_id', orgId)
       .order('date', { ascending: false })
     if (data) setEntries(data)
     setLoading(false)
@@ -125,6 +126,7 @@ export default function FinancePage() {
       .from('finance_entries')
       .insert({
         user_id: user.id,
+        org_id: orgId,
         type,
         name: form.name,
         amount: parseFloat(form.amount),

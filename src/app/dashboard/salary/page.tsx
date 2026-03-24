@@ -17,7 +17,7 @@ interface SalaryRow {
 }
 
 export default function SalaryPage() {
-  const { user, isAdmin } = useRole()
+  const { user, isAdmin, orgId } = useRole()
   const supabase = createClient()
   const [entries, setEntries] = useState<SalaryEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,16 +35,17 @@ export default function SalaryPage() {
   const [rows, setRows] = useState<SalaryRow[]>([{ salary: '', commission: '', brand: DEFAULT_BRANDS[0] }])
 
   useEffect(() => {
-    if (user) {
+    if (user && orgId) {
       loadEntries()
       loadBrands()
     }
-  }, [user])
+  }, [user, orgId])
 
   const loadBrands = async () => {
     const { data } = await supabase
       .from('dropdown_settings')
       .select('value')
+      .eq('org_id', orgId)
       .eq('category', 'salary_brand')
       .order('sort_order')
 
@@ -60,6 +61,7 @@ export default function SalaryPage() {
     const { data } = await supabase
       .from('salary_entries')
       .select('*')
+      .eq('org_id', orgId)
       .order('date', { ascending: false })
     if (data) setEntries(data)
     setLoading(false)
@@ -86,6 +88,7 @@ export default function SalaryPage() {
 
     const inserts = validRows.map(r => ({
       user_id: user.id,
+      org_id: orgId,
       date: paymentDate,
       salary: parseFloat(r.salary) || 0,
       commission: parseFloat(r.commission) || 0,

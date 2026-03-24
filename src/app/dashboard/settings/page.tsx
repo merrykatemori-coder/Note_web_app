@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import TabBar from '@/components/TabBar'
 import { Plus, Loader2, Trash2, GripVertical } from 'lucide-react'
 import type { DropdownSetting } from '@/lib/types'
@@ -22,7 +22,7 @@ const DEFAULTS: Record<string, string[]> = {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, orgId } = useRole()
   const supabase = createClient()
   const [activeCategory, setActiveCategory] = useState('memo_brand')
   const [items, setItems] = useState<DropdownSetting[]>([])
@@ -35,14 +35,15 @@ export default function SettingsPage() {
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (user) loadItems()
-  }, [user, activeCategory])
+    if (user && orgId) loadItems()
+  }, [user, orgId, activeCategory])
 
   const loadItems = async () => {
     setLoading(true)
     const { data } = await supabase
       .from('dropdown_settings')
       .select('*')
+      .eq('org_id', orgId)
       .eq('category', activeCategory)
       .order('sort_order')
 
@@ -53,6 +54,7 @@ export default function SettingsPage() {
       if (defaults.length > 0) {
         const inserts = defaults.map((value, i) => ({
           user_id: user!.id,
+          org_id: orgId,
           category: activeCategory,
           value,
           sort_order: i,
@@ -79,6 +81,7 @@ export default function SettingsPage() {
       .from('dropdown_settings')
       .insert({
         user_id: user.id,
+        org_id: orgId,
         category: activeCategory,
         value: newValue.trim(),
         sort_order: maxOrder,

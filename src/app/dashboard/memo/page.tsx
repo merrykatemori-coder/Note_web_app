@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import TabBar from '@/components/TabBar'
 import SearchBar from '@/components/SearchBar'
 import Modal from '@/components/Modal'
@@ -36,7 +36,7 @@ function linkifyText(text: string) {
 }
 
 export default function MemoPage() {
-  const { user } = useAuth()
+  const { user, orgId } = useRole()
   const supabase = createClient()
   const [memos, setMemos] = useState<Memo[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,9 +51,9 @@ export default function MemoPage() {
   const [tabsLoaded, setTabsLoaded] = useState(false)
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !orgId) return
     loadData()
-  }, [user])
+  }, [user, orgId])
 
   const loadData = async () => {
     setLoading(true)
@@ -61,11 +61,13 @@ export default function MemoPage() {
       supabase
         .from('dropdown_settings')
         .select('value')
+        .eq('org_id', orgId)
         .eq('category', 'memo_brand')
         .order('sort_order'),
       supabase
         .from('memos')
         .select('*')
+        .eq('org_id', orgId)
         .order('pinned', { ascending: false })
         .order('created_at', { ascending: false }),
     ])
@@ -125,6 +127,7 @@ export default function MemoPage() {
         .from('memos')
         .insert({
           user_id: user.id,
+          org_id: orgId,
           tab: activeTab,
           topic: form.topic,
           details: form.details,

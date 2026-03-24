@@ -8,6 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN!
 const lineGroupId = process.env.LINE_GROUP_ID!
+const lineOrgId = process.env.LINE_ORG_ID || 'org_main'
 
 function buildFlexMessage(grouped: Record<string, any[]>, totalCount: number) {
   const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' })
@@ -234,6 +235,7 @@ export async function GET() {
     const { data: orders, error } = await supabase
       .from('work_orders')
       .select('*')
+      .eq('org_id', lineOrgId)
       .eq('status', 'todo')
       .order('category')
       .order('date', { ascending: true })

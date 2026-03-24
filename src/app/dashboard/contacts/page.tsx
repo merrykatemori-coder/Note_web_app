@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import { useAuth } from '@/hooks/useAuth'
+import { useRole } from '@/hooks/useRole'
 import SearchBar from '@/components/SearchBar'
 import Modal from '@/components/Modal'
 import { Plus, Loader2, Trash2, ChevronLeft, Edit3, Phone, Mail, User2 } from 'lucide-react'
@@ -24,7 +24,7 @@ interface Contact {
 const DEFAULT_TYPES = ['Customer', 'Officer', 'Organization', 'Partner', 'Other']
 
 export default function ContactsPage() {
-  const { user } = useAuth()
+  const { user, orgId } = useRole()
   const supabase = createClient()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,14 +41,14 @@ export default function ContactsPage() {
   })
 
   useEffect(() => {
-    if (user) loadData()
-  }, [user])
+    if (user && orgId) loadData()
+  }, [user, orgId])
 
   const loadData = async () => {
     setLoading(true)
     const [contactRes, typeRes] = await Promise.all([
-      supabase.from('contacts').select('*').order('name'),
-      supabase.from('dropdown_settings').select('value').eq('category', 'contact_type').order('sort_order'),
+      supabase.from('contacts').select('*').eq('org_id', orgId).order('name'),
+      supabase.from('dropdown_settings').select('value').eq('org_id', orgId).eq('category', 'contact_type').order('sort_order'),
     ])
     if (contactRes.data) setContacts(contactRes.data)
     if (typeRes.data && typeRes.data.length > 0) {
@@ -89,7 +89,7 @@ export default function ContactsPage() {
         setShowDetail(null)
       }
     } else {
-      const { data } = await supabase.from('contacts').insert({ ...form, user_id: user.id }).select().single()
+      const { data } = await supabase.from('contacts').insert({ ...form, user_id: user.id, org_id: orgId }).select().single()
       if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     }
 
